@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.*;
+
 
 /**
  * This is just a demo for you, please run it on JDK17.
@@ -50,8 +50,8 @@ public class OnlineCoursesAnalyzer {
     //1
     public Map<String, Integer> getPtcpCountByInst() {
         Stream<Course> stream = courses.stream();
-        Map<String,Integer> map = stream.sorted(Comparator.comparing(c -> c.institution))
-                .collect(Collectors.groupingBy(c->c.institution,TreeMap::new,Collectors.summingInt(c->c.participants)));
+        Map<String, Integer> map = stream.sorted(Comparator.comparing(c -> c.institution))
+                .collect(Collectors.groupingBy(c-> c.institution,TreeMap::new,Collectors.summingInt(c->c.participants)));
 
         return map;
     }
@@ -60,7 +60,7 @@ public class OnlineCoursesAnalyzer {
     public Map<String, Integer> getPtcpCountByInstAndSubject() {
 //        return null;
         Stream<Course> stream = courses.stream();
-        Map<String,Integer> map = stream.collect(Collectors.groupingBy(course -> course.institution+"-"+course.subject,Collectors.summingInt(c->c.participants)));
+        Map<String, Integer> map = stream.collect(Collectors.groupingBy(course -> course.institution+"-"+course.subject,Collectors.summingInt(c->c.participants)));
         LinkedHashMap<String,Integer> linkedHashMap = map.entrySet().stream().sorted((a,b)->-a.getValue().compareTo(b.getValue())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,(x,y)->y,LinkedHashMap::new));
         return linkedHashMap;
     }
@@ -115,10 +115,6 @@ public class OnlineCoursesAnalyzer {
             res.put(key,listList);
         }
         return res;
-
-//        return result;
-
-
     }
 
     //4
@@ -175,6 +171,11 @@ public class OnlineCoursesAnalyzer {
             averageMale = sumMale/courses.size();
             averageMedian = sumMedian/courses.size();
         }
+
+        public void sortDate(){
+            courses.sort((c1,c2)->-c1.launchDate.compareTo(c2.launchDate));
+            this.courseName = courses.get(0).title;
+        }
     }
     public List<String> recommendCourses(int age, int gender, int isBachelorOrHigher) {
 
@@ -183,11 +184,18 @@ public class OnlineCoursesAnalyzer {
         distinct.forEach((c)->statsMap.put(c.number,new CourseStats(c.number,c.title)));
         courses.forEach((c)->statsMap.get(c.number).courses.add(c));
         statsMap.values().forEach(CourseStats::calculateStats);
+        statsMap.values().forEach(CourseStats::sortDate);
+
         Map<String,CourseStats> rankedMap= statsMap.entrySet().stream().
-                sorted(Comparator.comparingDouble(c -> calcSim(c.getValue(), age, gender, isBachelorOrHigher))).
-                collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue,(x,y)->y,LinkedHashMap::new));
+                sorted((c1,c2)->{
+                    int result = Double.compare(calcSim(c1.getValue(),age,gender,isBachelorOrHigher),calcSim(c2.getValue(),age,gender,isBachelorOrHigher));
+                    if(result==0){
+                        return c1.getValue().courseName.compareTo(c2.getValue().courseName);
+                    }
+                    return result;
+                }).
+                collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue,(x,y)->x,LinkedHashMap::new));
         return rankedMap.values().stream().map(c->c.courseName).distinct().limit(10).toList();
-//        return null;
     }
 
     static double calcSim(CourseStats courseStats, int age, int gender, int degree){
