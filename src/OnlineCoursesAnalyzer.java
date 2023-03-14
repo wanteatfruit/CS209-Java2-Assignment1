@@ -6,8 +6,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.summingDouble;
-import static java.util.stream.Collectors.summingInt;
+import static java.util.stream.Collectors.*;
 
 /**
  * This is just a demo for you, please run it on JDK17.
@@ -125,17 +124,9 @@ public class OnlineCoursesAnalyzer {
     //4
     public List<String> getCourses(int topK, String by) {
         if(by.equals("hours")){
-            Map<String,Double> map = courses.stream().collect(Collectors.groupingBy(c->c.title,summingDouble(c->c.totalHours)));
-            LinkedHashMap<String,Double> linkedHashMap = map.entrySet().stream().sorted((d1,d2)->-d1.getValue().compareTo(d2.getValue())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,(x,y)->y,LinkedHashMap::new));
-            List<String> result;
-            result = linkedHashMap.entrySet().stream().limit(topK).map(Map.Entry::getKey).collect(Collectors.toList());
-            return result;
+            return courses.stream().sorted((c1,c2)->-Double.compare(c1.totalHours,c2.totalHours)).map(c->c.title).distinct().limit(topK).toList();
         }else if(by.equals("participants")){
-            Map<String,Integer> map = courses.stream().collect(Collectors.groupingBy(c->c.title,summingInt(c->c.participants)));
-            LinkedHashMap<String,Integer> linkedHashMap = map.entrySet().stream().sorted((d1,d2)->-d1.getValue().compareTo(d2.getValue())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,(x,y)->y,LinkedHashMap::new));
-            List<String> result;
-            result = linkedHashMap.entrySet().stream().limit(topK).map(Map.Entry::getKey).collect(Collectors.toList());
-            return result;
+            return courses.stream().sorted((c1,c2)->-Integer.compare(c1.participants,c2.participants)).map(c->c.title).distinct().limit(topK).toList();
         }
         return null;
     }
@@ -143,12 +134,66 @@ public class OnlineCoursesAnalyzer {
 
     //5
     public List<String> searchCourses(String courseSubject, double percentAudited, double totalCourseHours) {
-        return null;
+//        return null;
+        Set<String> res = new TreeSet<>();
+        String match = courseSubject.toLowerCase();
+        for (int i = 0; i < courses.size(); i++) {
+            Course course = courses.get(i);
+            if(course.subject.toLowerCase().contains(match) && course.percentAudited>=percentAudited && course.totalHours<=totalCourseHours){
+                res.add(course.title);
+            }
+        }
+        return new ArrayList<>(res);
     }
 
     //6
+    public class CourseStats{
+        double averageMedian;
+        double averageMale;
+        double averageDegree;
+        String courseId;
+        String courseName;
+        List<Course> courses= new ArrayList<>();
+
+        public CourseStats(String id,String courseName){
+            courseId = id;
+            this.courseName = courseName;
+        }
+        public CourseStats(Course course){
+            courses.add(course);
+        }
+
+        public void calculateStats(){
+            double sumMedian = 0,sumMale = 0,sumDegree=0;
+            for (int i = 0; i < courses.size(); i++) {
+                Course course = courses.get(i);
+                sumMale+=course.percentMale;
+                sumMedian+=course.medianAge;
+                sumDegree+=course.percentDegree;
+            }
+            averageDegree = sumDegree/courses.size();
+            averageMale = sumMale/courses.size();
+            averageMedian = sumMedian/courses.size();
+        }
+    }
     public List<String> recommendCourses(int age, int gender, int isBachelorOrHigher) {
-        return null;
+
+        Stream<Course> distinct =  courses.stream().distinct();
+        Map<String,CourseStats> statsMap = new HashMap<>(); // (id, stats)
+        distinct.forEach((c)->statsMap.put(c.number,new CourseStats(c.number,c.title)));
+        courses.forEach((c)->statsMap.get(c.number).courses.add(c));
+        statsMap.values().forEach(CourseStats::calculateStats);
+        Map<String,CourseStats> rankedMap= statsMap.entrySet().stream().
+                sorted(Comparator.comparingDouble(c -> calcSim(c.getValue(), age, gender, isBachelorOrHigher))).
+                collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue,(x,y)->y,LinkedHashMap::new));
+        return rankedMap.values().stream().map(c->c.courseName).distinct().limit(10).toList();
+//        return null;
+    }
+
+    static double calcSim(CourseStats courseStats, int age, int gender, int degree){
+        return Math.pow((age- courseStats.averageMedian),2)
+                +Math.pow((gender*100- courseStats.averageMale),2)
+                +Math.pow((100*degree- courseStats.averageDegree),2);
     }
 
 }
