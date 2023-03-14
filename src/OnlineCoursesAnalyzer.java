@@ -69,19 +69,18 @@ public class OnlineCoursesAnalyzer {
     //3
     public Map<String, List<List<String>>> getCourseListOfInstructor() {
         System.out.println(courses.get(1).instructors);
-        Stream<Course> courseStream = courses.stream();
-
         Map<String, List<Set<String>>> result = new HashMap<>();
 
         //filter unique instructor
         for (Course course : courses) {
             String[] insts = course.instructors.split(", ");
-            Set<String> independent = new TreeSet<>();
-            Set<String> co = new TreeSet<>();
-            List<Set<String>> lists = new ArrayList<>();
-            lists.add(independent);
-            lists.add(co);
+
             for (String instructor : insts) {
+                Set<String> independent = new TreeSet<>();
+                Set<String> co = new TreeSet<>();
+                List<Set<String>> lists = new ArrayList<>();
+                lists.add(independent);
+                lists.add(co);
                 result.put(instructor, lists);
             }
         }
